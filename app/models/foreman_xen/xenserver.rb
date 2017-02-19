@@ -354,13 +354,22 @@ module ForemanXen
     protected
 
     def client
-      @client ||= ::Fog::Compute.new(
-        :provider                     => 'XenServer',
-        :xenserver_url                => url,
-        :xenserver_username           => user,
-        :xenserver_password           => password,
-        :xenserver_redirect_to_master => true
-      )
+      args = { 
+            :provider                     => 'XenServer',
+            :xenserver_url                => url,
+            :xenserver_username           => user,
+            :xenserver_password           => password,
+            :xenserver_redirect_to_master => true
+      }
+      begin
+         @client ||= ::Fog::Compute.new(args)
+      rescue Fog::XenServer::NotMaster => e
+         self.url_will_change!
+         args[:xenserver_url] = self.url = get_xenserver_url e.master
+         @client ||= ::Fog::Compute.new(args)
+         self.save
+         @client
+      end
     end
 
     def disconnect
@@ -415,5 +424,12 @@ module ForemanXen
       return client.hosts.first unless args[:hypervisor_host] != ''
       client.hosts.find { |host| host.name == args[:hypervisor_host] }
     end
+
+    def get_xenserver_url(ip) 
+        Resolv.new.getname ip
+    rescue Resolv::ResolvError
+        ip
+    end
+
   end
 end

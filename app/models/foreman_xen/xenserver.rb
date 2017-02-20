@@ -182,12 +182,12 @@ module ForemanXen
 
     def create_vm(args = {})
 
-      builtin_template_name = args[:builtin_template_name].to_s
-      custom_template_name  = if args[:image_id].blank? 
-        args[:custom_template_name]
-      else
-        args[:image_id]
+      if ! args[:image_id].blank?
+        args[:custom_template_name] = args[:image_id]
       end
+
+      custom_template_name  = args[:custom_template_name].to_s
+      builtin_template_name = args[:builtin_template_name].to_s
 
       if builtin_template_name != '' && custom_template_name != ''
         logger.info "custom_template_name: #{custom_template_name}"

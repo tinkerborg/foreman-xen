@@ -10,7 +10,7 @@ module ForemanXen
     end
 
     def capabilities
-      [:build]
+      [:build, :image]
     end
 
     def find_vm_by_uuid(uuid)
@@ -181,8 +181,13 @@ module ForemanXen
     end
 
     def create_vm(args = {})
-      custom_template_name  = args[:custom_template_name].to_s
+
       builtin_template_name = args[:builtin_template_name].to_s
+      custom_template_name  = if args[:image_id].blank? 
+        args[:custom_template_name]
+      else
+        args[:image_id]
+      end
 
       if builtin_template_name != '' && custom_template_name != ''
         logger.info "custom_template_name: #{custom_template_name}"
@@ -249,7 +254,7 @@ module ForemanXen
       disks.sort! { |a, b| a.userdevice <=> b.userdevice }
       i = 0
       disks.each do |vbd|
-        vbd.vdi.set_attribute('name-label', "#{args[:name]}_#{i}")
+        #vbd.vdi.set_attribute('name-label', "#{args[:name]}_#{i}")
         i += 1
       end
       vm

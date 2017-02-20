@@ -18,6 +18,16 @@
    end
 
 -%>
+<%
+   arch ||= nil ; os ||= nil
+   images = possible_images(compute_resource, arch, os)
+%>
+
+<div id='image_selection'>
+  <%= select_f f, :image_id, images, :uuid, :name,
+               { :include_blank => (images.empty? || images.size == 1) ? false : _('Please select an image') },
+               { :disabled => images.empty?, :label => _('Image'), :label_size => "col-md-2" } %>
+</div>
 <%= javascript_tag("$(document).on('ContentLoad', tfm.numFields.initAll)"); %>
 <!-- VM Initial Settings -->
 <div class="children_fields">
@@ -90,6 +100,12 @@
         $('.xenserver-raw').hide(1);
     }
 
+    // Check if image-based deployment in use then do not show Templates or SR settings
+    if ($("#host_provision_method_image").is(":checked")) {
+        $('.xenserver-raw').hide(1);
+        $('#xen_templates').hide(1);
+    }
+
     // Check which template are in use
     if ($("#compute_attribute_vm_attrs_builtin_template_name").val() != "") {
         $('#compute_attribute_vm_attrs_custom_template_name').val($("#compute_attribute_vm_attrs_custom_template_name option:contains('No template')").val());
@@ -140,6 +156,17 @@
 
     });
 
+    // Image deployment
+    $(document).off('change.xenserver', '#host_provision_method_image');
+    $(document).on('change.xenserver', '#host_provision_method_image', function (data) {
+        if ($('#host_provision_method_image').is(':checked')) {
+            $('.xenserver-raw').hide(1000);
+            $('#xen_templates').hide(1000);
+        } else {
+            $('.xenserver-raw').show(1000);
+            $('#xen_templates').show(1000);                                                                                   }
+
+    });
 
     // Host Profile Forms
 

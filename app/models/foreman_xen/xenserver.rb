@@ -1,4 +1,5 @@
 require 'ipaddr'
+require 'ostruct'
 
 module ForemanXen
   class Xenserver < ComputeResource
@@ -12,7 +13,7 @@ module ForemanXen
     end
 
     def capabilities
-      [:build]
+      [:build, :image]
     end
 
     def find_vm_by_uuid(uuid)
@@ -141,6 +142,12 @@ module ForemanXen
       read_from_cache('custom_templates', 'custom_templates!')
     end
 
+    def available_images
+      custom_templates.collect do |template|
+        OpenStruct.new({ :id => template.uuid, :name => template.name })
+      end
+    end
+
     def custom_templates!
       store_in_cache('custom_templates') do
         get_templates(client.servers.custom_templates)
@@ -198,18 +205,22 @@ module ForemanXen
     end
 
     def create_vm(args = {})
+
       custom_template_name  = args[:custom_template_name].to_s
       builtin_template_name = args[:builtin_template_name].to_s
+      image_id              = args[:image_id].to_s
 
-      if builtin_template_name != '' && custom_template_name != ''
+      if builtin_template_name != '' && custom_template_name != '' && image_id != ''
         logger.info "custom_template_name: #{custom_template_name}"
         logger.info "builtin_template_name: #{builtin_template_name}"
+        logger.info "image_id: #{image_id}"
         raise 'you can select at most one template type'
       end
       begin
         logger.info "create_vm(): custom_template_name: #{custom_template_name}"
         logger.info "create_vm(): builtin_template_name: #{builtin_template_name}"
-        vm = custom_template_name != '' ? create_vm_from_custom(args) : create_vm_from_builtin(args)
+        logger.info "create_vm(): image_id: #{image_id}"
+        vm = custom_template_name != '' || image_id != '' ? create_vm_from_custom(args) : create_vm_from_builtin(args)
         vm.set_attribute('name_description', 'Provisioned by Foreman')
         vm.set_attribute('VCPUs_max', args[:vcpus_max])
         vm.set_attribute('VCPUs_at_startup', args[:vcpus_max])
@@ -228,11 +239,11 @@ module ForemanXen
 
       host = get_hypervisor_host(args)
 
-      logger.info "create_vm_from_builtin: host : #{host.name}"
+      logger.info "create_vm_from_custom: host : #{host.name}"
 
       raise 'Memory max cannot be lower than Memory min' if mem_min.to_i > mem_max.to_i
 
-      template    = client.custom_templates.select { |t| t.name == args[:custom_template_name] }.first
+      template    = find_custom_template(args)
       vm          = template.clone args[:name]
       vm.affinity = host
 
@@ -465,5 +476,16 @@ module ForemanXen
     def cache_key
       "computeresource_#{id}/"
     end
+
+    def find_custom_template(args)
+      client.custom_templates.find do |t|
+        if args[:image_id].empty?
+          t.name == args[:custom_template_name]
+        else
+          t.uuid == args[:image_id]
+        end
+      end
+    end
+
   end
 end

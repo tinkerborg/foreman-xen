@@ -18,6 +18,18 @@
    end
 
 -%>
+
+<%
+   arch ||= nil ; os ||= nil
+   images = possible_images(compute_resource, arch, os)
+%>
+
+<div id='image_selection'>
+  <%= select_f f, :image_id, images, :uuid, :name,
+               { :include_blank => (images.empty? || images.size == 1) ? false : _('Please select an image') },
+               { :disabled => images.empty?, :label => _('Image'), :label_size => "col-md-2" } %>
+</div>
+ 
 <%= javascript_tag("$(document).on('ContentLoad', tfm.numFields.initAll)"); %>
 <!-- VM Initial Settings -->
 <div class="children_fields">
@@ -90,6 +102,13 @@
         $('.xenserver-raw').hide(1);
     }
 
+    // Default to image-based deployment
+    $(document).ajaxComplete(function(event, req) {
+        if (req.originalRequestOptions.url === "/hosts/compute_resource_selected") {
+            $("#host_provision_method_image").click();
+        }
+    });
+
     // Check which template are in use
     if ($("#compute_attribute_vm_attrs_builtin_template_name").val() != "") {
         $('#compute_attribute_vm_attrs_custom_template_name').val($("#compute_attribute_vm_attrs_custom_template_name option:contains('No template')").val());
@@ -139,7 +158,6 @@
         }
 
     });
-
 
     // Host Profile Forms
 
